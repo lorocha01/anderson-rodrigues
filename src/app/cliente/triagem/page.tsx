@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth";
 import { availableSessions, currentMemberships } from "@/lib/client-data";
 import { ButtonLink, Card, PageHeader } from "@/components/ui";
 import { TriageFlow } from "./triage-flow";
+import { submitTriage } from "../actions";
 import type { Category, TriageOption, TriageQuestion } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Quero conversar" };
@@ -35,7 +36,7 @@ export default async function TriagePage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <TriageFlow categories={categories ?? []} questions={questions ?? []} options={options ?? []} />
+      <TriageFlow categories={categories ?? []} questions={questions ?? []} options={options ?? []} onSubmit={submitTriage} />
     </div>
   );
 }
