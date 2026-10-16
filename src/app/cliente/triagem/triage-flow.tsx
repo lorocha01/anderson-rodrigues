@@ -3,7 +3,6 @@
 import { useMemo, useState, useTransition } from "react";
 import { Button, Card } from "@/components/ui";
 import { CrisisPanel } from "@/components/crisis";
-import { submitTriage } from "../actions";
 import type { Category, TriageOption, TriageQuestion } from "@/lib/types";
 
 type Step =
@@ -24,10 +23,12 @@ export function TriageFlow({
   categories,
   questions,
   options,
+  onSubmit,
 }: {
   categories: Category[];
   questions: TriageQuestion[];
   options: TriageOption[];
+  onSubmit: (categoryId: string, optionIds: string[]) => Promise<{ error: string } | void>;
 }) {
   const riskQuestion = questions.find((q) => q.category_id === null);
   const optionsByQuestion = useMemo(() => {
@@ -82,7 +83,7 @@ export function TriageFlow({
     if (!categoryId) return;
     setError(null);
     startTransition(async () => {
-      const result = await submitTriage(categoryId, answers.map((a) => a.optionId));
+      const result = await onSubmit(categoryId, answers.map((a) => a.optionId));
       if (result?.error) setError(result.error);
     });
   }

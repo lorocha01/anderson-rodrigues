@@ -4,7 +4,23 @@ import { getCurrentUser, HOME_BY_ROLE } from "@/lib/auth";
 import { ButtonLink, Logo, buttonClass } from "@/components/ui";
 import { CrisisFooter } from "@/components/crisis";
 import { money, sessionsLabel } from "@/lib/format";
+import { isSupabaseConfigured } from "@/lib/env";
+import { DEMO_CATEGORIES, DEMO_PLANS } from "@/lib/demo/data";
 import type { Category, Plan } from "@/lib/types";
+
+async function loadHome() {
+  // Sem banco configurado, a página inicial mostra os dados da demonstração.
+  if (!isSupabaseConfigured()) {
+    return { categories: DEMO_CATEGORIES, plans: DEMO_PLANS, current: null, demo: true };
+  }
+  const supabase = await createClient();
+  const [{ data: categories }, { data: plans }, current] = await Promise.all([
+    supabase.from("categories").select("*").eq("active", true).order("sort_order").returns<Category[]>(),
+    supabase.from("plans").select("*").eq("active", true).order("sort_order").returns<Plan[]>(),
+    getCurrentUser(),
+  ]);
+  return { categories: categories ?? [], plans: plans ?? [], current, demo: false };
+}
 
 const STEPS = [
   { title: "Escolha o tema", text: "Família, trabalho, relacionamentos, emoções. Você diz sobre o que quer conversar." },
@@ -13,12 +29,8 @@ const STEPS = [
 ];
 
 export default async function Home() {
-  const supabase = await createClient();
-  const [{ data: categories }, { data: plans }, current] = await Promise.all([
-    supabase.from("categories").select("*").eq("active", true).order("sort_order").returns<Category[]>(),
-    supabase.from("plans").select("*").eq("active", true).order("sort_order").returns<Plan[]>(),
-    getCurrentUser(),
-  ]);
+  const { categories, plans, current, demo } = await loadHome();
+  const start = demo ? "/demo/cliente" : "/cadastro";
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -28,8 +40,8 @@ export default async function Home() {
           <ButtonLink href={HOME_BY_ROLE[current.profile.role]} variant="secondary">Minha área</ButtonLink>
         ) : (
           <div className="flex items-center gap-2">
-            <Link href="/entrar" className={buttonClass("ghost")}>Entrar</Link>
-            <ButtonLink href="/cadastro" className="hidden sm:inline-flex">Começar</ButtonLink>
+            <Link href={demo ? "/demo" : "/entrar"} className={buttonClass("ghost")}>{demo ? "Demonstração" : "Entrar"}</Link>
+            <ButtonLink href={start} className="hidden sm:inline-flex">Começar</ButtonLink>
           </div>
         )}
       </header>
@@ -47,7 +59,7 @@ export default async function Home() {
             com profissionais escolhidos para o seu tema.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="/cadastro" className="px-7 py-3 text-base">Quero conversar</ButtonLink>
+            <ButtonLink href={start} className="px-7 py-3 text-base">Quero conversar</ButtonLink>
             <ButtonLink href="#planos" variant="secondary" className="px-7 py-3 text-base">Ver planos</ButtonLink>
           </div>
         </section>
@@ -67,7 +79,7 @@ export default async function Home() {
           </div>
         </section>
 
-        {categories && categories.length > 0 && (
+        {categories.length > 0 && (
           <section className="mx-auto max-w-5xl px-4 py-16">
             <h2 className="font-display text-3xl font-semibold">Sobre o que você quer conversar?</h2>
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -89,7 +101,7 @@ export default async function Home() {
             <h2 className="font-display text-3xl font-semibold">Planos</h2>
             <p className="mt-2 text-muted">Assine mensalmente ou compre um atendimento avulso. Cancele quando quiser.</p>
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {(plans ?? []).map((p) => (
+              {plans.map((p) => (
                 <div
                   key={p.id}
                   className={`flex flex-col rounded-3xl bg-white p-6 ${p.highlighted ? "ring-2 ring-primary" : "border border-line"}`}
@@ -102,7 +114,7 @@ export default async function Home() {
                     {p.kind === "subscription" && <span className="text-base font-semibold text-muted">/mês</span>}
                   </p>
                   <p className="mt-1 text-sm font-semibold text-primary-dark">{sessionsLabel(p.sessions_included)}</p>
-                  <ButtonLink href={`/cadastro?plano=${p.id}`} variant={p.highlighted ? "primary" : "secondary"} className="mt-6">
+                  <ButtonLink href={demo ? "/demo/cliente/planos" : `/cadastro?plano=${p.id}`} variant={p.highlighted ? "primary" : "secondary"} className="mt-6">
                     Escolher
                   </ButtonLink>
                 </div>
